@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Minha IA</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 20px auto; padding: 0 15px; }
+    #chat { height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    .user { text-align: right; color: blue; }
+    .ai { text-align: left; color: green; }
+    input { width: 70%; padding: 8px; }
+    button { padding: 8px 12px; }
+    .feedback { margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <h2>🌱 Minha IA em desenvolvimento</h2>
+  <div id="chat"></div>
+  <input type="text" id="userInput" placeholder="Digite algo..." onkeypress="if(event.key==='Enter') send()">
+  <button onclick="send()">Enviar</button>
+
+  <script>
+    const API_BASE = "https://seu-backend.onrender.com"; // <<< ALTERAR DEPOIS
+    let currentResponse = "";
+    let currentInput = "";
+
+    async function send() {
+      const input = document.getElementById("userInput").value;
+      if (!input.trim()) return;
+
+      currentInput = input;
+      addToChat(input, "user");
+      document.getElementById("userInput").value = "";
+
+      const res = await fetch(API_BASE + "/respond", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({text: input})
+      });
+      const data = await res.json();
+      currentResponse = data.response;
+      addToChat(data.response, "ai");
+      showFeedback();
+    }
+
+    function addToChat(text, sender) {
+      const div = document.createElement("div");
+      div.className = sender;
+      div.innerText = text;
+      document.getElementById("chat").appendChild(div);
+      document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
+    }
+
+    function showFeedback() {
+      const div = document.createElement("div");
+      div.className = "feedback";
+      div.innerHTML = `
+        <button onclick="sendFeedback(true)">✅ Bom</button>
+        <button onclick="sendFeedback(false)">❌ Ruim</button>
+      `;
+      document.getElementById("chat").appendChild(div);
+    }
+
+    async function sendFeedback(isGood) {
+      if (!isGood) {
+        const corrected = prompt("Como deveria ter respondido?");
+        if (corrected === null) return;
+        await sendFeedbackAPI(isGood, corrected);
+      } else {
+        await sendFeedbackAPI(isGood, "");
+      }
+      // Remove botões de feedback
+      document.querySelector(".feedback").remove();
+    }
+
+    async function sendFeedbackAPI(isGood, corrected) {
+      await fetch(API_BASE + "/feedback", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          user_input: currentInput,
+          response: currentResponse,
+          is_good: isGood,
+          corrected: corrected
+        })
+      });
+    }
+
+    // Carrega personalidade ao iniciar
+    fetch(API_BASE + "/personality")
+      .then(r => r.json())
+      .then(p => console.log("IA carregada com", p.lesson_count, "lições"));
+  </script>
+</body>
+</html>
